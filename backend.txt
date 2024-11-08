@@ -1,0 +1,16 @@
+  #configurado para las pruebas en mi cuenta, debe ser sustituido con los valores propios
+  #de los recursos de la cuenta que ejecuta el codigo
+  #sustituir la region, el nombre del bucket y nombre de la tabla de Dynamo
+
+    terraform {
+    
+        backend "s3" {
+        bucket = "lab4juan"
+        key = "backend.tfstate"
+        region = "us-east-1"
+        encrypt = true
+        dynamodb_table = "lab4juan"
+      
+    }
+
+}

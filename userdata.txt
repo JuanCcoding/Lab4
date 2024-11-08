@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+EFS_ID="${EFS_ID}"
+EFS_DNS="${EFS_DNS}"
+
+yum install -y httpd
+systemctl httpd start
+systemctl enable httpd
+yum install amazon-efs-utils -y
+yum install -q -y php php-{gd,cgi,mysqli,cli,fpm,opcache,pear,common,curl,mbstring,mysqlnd,gettext,bcmath,xml,intl,zip}
+dnf install postgresql15.x86_64 postgresql15-server -y
+yum install memcached
+systemctl start memcached
+mkdir /var/www/html/efs
+# Mounting Efs 
+mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EFS_DNS}:/ /var/www/html/efs
+
+
+# Making Mount Permanent
+echo "${EFS_ID}:/ /var/www/html efs tls,_netdev 0 0" | sudo tee -a /etc/fstab
+
+#instalamos wordpress
+
+cd /var/www/html
+echo "mi web esta saludable" > salud.html
+wget https://wordpress.org/latest.zip
+unzip latest.zip
+cp -R wordpress/* /var/www/html/
+mv wp-config-sample.php wp-config.php
+
+echo "if (strpos($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false)$_SERVER['HTTPS']='on';" >> wp-config.php
+echo "define('WP_CACHE',true);" wp-config.php
+
+#instalamos el archivo necesario para admitir conexiones  postgresql
+
+cd wp-content 
+git clone https://github.com/kevinoid/postgresql-for-wordpress.git
+mv postgresql-for-wordpress/pg4wp pg4wp
+rm -rf postgresql-for-wordpress
+cp pg4wp/db.php db.php
+
+usermod -a -G apache ec2-user 
+chown -R ec2-user:apache /var/www/html 
+chown -R apache:apache /var/www/html
+
+
+#sustituimos los valores de la bbdd para poder acceder
+
+sed -i 's/database_name_here/wordpress/g' /var/www/html/wp-config.php
+ 
+sed -i 's/username_here/admin123/g' /var/www/html/wp-config.php
+ 
+sed -i 's/password_here/admin123/g' /var/www/html/wp-config.php
+ 
+sed -i 's/localhost/bbdd.lab4.com/g' /var/www/html/wp-config.php
